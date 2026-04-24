@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morning Weather</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Boxicons for weather icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-default">
+    <div class="app-container">
+        <div class="weather-card glass-panel">
+            <header>
+                <h2>Good Morning</h2>
+                <p id="date-display" class="date-text">Loading...</p>
+                <p id="location-display" class="location-text"><i class='bx bx-map'></i> Locating...</p>
+            </header>
+            
+            <div id="loading-spinner" class="spinner">
+                <i class='bx bx-loader-alt bx-spin'></i>
+            </div>
+
+            <main id="weather-content" class="weather-content hidden">
+                <div class="icon-wrapper">
+                    <i id="weather-icon" class='bx bx-sun'></i>
+                </div>
+                <div class="temperature">
+                    <span id="temp-value">--</span><span class="unit">°C</span>
+                </div>
+                <div class="description">
+                    <p id="weather-description">Fetching weather...</p>
+                </div>
+            </main>
+
+            <footer>
+                <button id="refresh-btn" class="refresh-btn">
+                    <i class='bx bx-refresh'></i> Refresh
+                </button>
+            </footer>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

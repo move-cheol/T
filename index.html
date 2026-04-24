@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Memo App</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons for icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class='bx bxs-edit' ></i> NoteSpace</h1>
+            <p>Capture your thoughts elegantly.</p>
+        </header>
+
+        <main>
+            <section class="editor-section">
+                <form id="memo-form" class="glass-panel">
+                    <input type="hidden" id="memo-id">
+                    <div class="input-group">
+                        <input type="text" id="memo-title" placeholder="Memo Title" required autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <textarea id="memo-content" placeholder="Write your thoughts here..." required></textarea>
+                    </div>
+                    <button type="submit" id="save-btn" class="btn-primary">
+                        <i class='bx bx-save'></i> Save Memo
+                    </button>
+                    <button type="button" id="cancel-btn" class="btn-secondary hidden">
+                        Cancel
+                    </button>
+                </form>
+            </section>
+
+            <section class="memos-section">
+                <div class="memos-header">
+                    <h2>Recent Notes</h2>
+                    <span id="memo-count" class="badge">0</span>
+                </div>
+                <div id="memos-grid" class="memos-grid">
+                    <!-- Memos will be dynamically injected here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

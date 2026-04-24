@@ -1,0 +1,214 @@
+:root {
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.8);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-primary);
+    transition: background 1.5s ease-in-out;
+    overflow: hidden;
+}
+
+/* Themes based on weather */
+body.theme-default {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+}
+
+body.theme-clear {
+    background: linear-gradient(135deg, #FFB75E 0%, #ED8F03 100%);
+}
+
+body.theme-cloudy {
+    background: linear-gradient(135deg, #606c88 0%, #3f4c6b 100%);
+}
+
+body.theme-rain {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+}
+
+body.theme-snow {
+    background: linear-gradient(135deg, #8e9eab 0%, #eef2f3 100%);
+    color: #333; /* Darker text for snow */
+}
+
+body.theme-snow .text-secondary {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+body.theme-snow .glass-panel {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+body.theme-snow .refresh-btn {
+    color: #333;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.app-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    padding: 40px 30px;
+    box-shadow: var(--glass-shadow);
+    text-align: center;
+    animation: fadeInUp 1s ease-out;
+}
+
+header h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+.date-text {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+}
+
+.location-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 30px;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+}
+
+/* Spinner */
+.spinner {
+    font-size: 3rem;
+    color: var(--text-primary);
+    margin: 40px 0;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Weather Content */
+.weather-content {
+    animation: fadeIn 1s ease-in;
+}
+
+.icon-wrapper i {
+    font-size: 6rem;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+    margin-bottom: 10px;
+}
+
+/* Dynamic Animation for Icons */
+.bx-sun { animation: pulse 3s infinite alternate; }
+.bx-cloud { animation: float 4s infinite ease-in-out; }
+.bx-cloud-rain { animation: floatDown 2s infinite linear; }
+
+.temperature {
+    font-size: 5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 10px;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.unit {
+    font-size: 2rem;
+    font-weight: 400;
+    vertical-align: top;
+}
+
+.description p {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    margin-bottom: 30px;
+}
+
+/* Footer Button */
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.refresh-btn:active {
+    transform: translateY(0);
+}
+
+/* Keyframes */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes floatDown {
+    0% { transform: translateY(-5px); }
+    50% { transform: translateY(5px); }
+    100% { transform: translateY(-5px); }
+}
