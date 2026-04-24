@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+// @ts-ignore
 import Parser from 'rss-parser';
+// @ts-ignore
 import yts from 'yt-search';
+// @ts-ignore
 import { search } from 'duck-duck-scrape';
 
 async function fetchGoogleNews(keyword: string, limit = 5) {
