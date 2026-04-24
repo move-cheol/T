@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basketball Team Maker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML2Canvas -->
+    <script src="https://cdnjs.cloudflare.com/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* 터치 영역 최소 44px 보장 */
+        button, .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        /* 커스텀 뱃지 및 배경 색상 */
+        .bg-team-a { background-color: #ef4444; color: white; } /* bg-red-500 */
+        .bg-team-b { background-color: #3b82f6; color: white; } /* bg-blue-500 */
+        .bg-team-c { background-color: #facc15; color: black; } /* bg-yellow-400 */
+        
+        .badge-C { background-color: #3b82f6; color: white; } /* 파란 배지 */
+        .badge-F { background-color: #22c55e; color: white; } /* 초록 배지 */
+        .badge-G { background-color: #f97316; color: white; } /* 주황 배지 */
+
+        /* 인쇄 모드 */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            /* 기타 불필요한 UI 숨김 처리 */
+            .no-print { display: none !important; }
+        }
+
+        /* 체크박스 디자인 보정 */
+        .custom-checkbox {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    
+    <!-- 상단 고정 헤더 -->
+    <header class="fixed top-0 left-0 w-full bg-white shadow-md z-50">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <input type="text" id="club-name" class="font-bold text-xl bg-transparent border-b border-transparent focus:border-gray-400 outline-none w-1/2" placeholder="동호회 이름 입력">
+            <div id="today-date" class="text-sm font-medium text-gray-500"></div>
+        </div>
+        <!-- 탭 네비게이션 -->
+        <div class="flex border-b bg-gray-50 text-sm max-w-4xl mx-auto">
+            <button class="flex-1 py-3 font-semibold text-blue-600 border-b-2 border-blue-600" id="tab-attendance">출석 체크</button>
+            <button class="flex-1 py-3 font-semibold text-gray-500" id="tab-result">팀 편성 결과</button>
+            <button class="flex-1 py-3 font-semibold text-gray-500" id="tab-manage">선수 관리</button>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="pt-32 pb-24 max-w-4xl mx-auto px-4">
+        
+        <!-- 출석 체크 탭 -->
+        <section id="section-attendance">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold">출석 체크 (<span id="attend-count">0</span>명)</h2>
+                <button id="btn-select-all" class="text-sm px-3 py-1 bg-gray-200 rounded touch-target">전체 선택</button>
+            </div>
+            <!-- 선수 리스트 -->
+            <div id="player-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- JS 렌더링 영역 -->
+            </div>
+        </section>
+
+        <!-- 팀 편성 결과 탭 (임시 숨김) -->
+        <section id="section-result" class="hidden">
+            <div class="flex justify-between items-center mb-4 no-print">
+                <h2 class="text-lg font-bold">팀 편성 결과</h2>
+                <div class="flex gap-2">
+                    <button id="btn-re-roll" class="px-3 py-1 bg-gray-500 text-white rounded shadow text-sm touch-target">다시 편성</button>
+                    <button id="btn-save-img" class="px-3 py-1 bg-green-500 text-white rounded shadow text-sm touch-target">이미지 저장</button>
+                    <button id="btn-copy-text" class="px-3 py-1 bg-blue-500 text-white rounded shadow text-sm touch-target">텍스트 복사</button>
+                </div>
+            </div>
+            <div id="print-area" class="p-2 bg-white rounded-lg">
+                <div class="text-center text-gray-500 mt-10" id="result-placeholder">출석 체크 후 하단의 [팀 편성하기] 버튼을 눌러주세요.</div>
+                <div id="result-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 hidden">
+                    <!-- 팀 렌더링 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 선수 관리 탭 (임시 숨김) -->
+        <section id="section-manage" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold">선수 관리</h2>
+                <button id="btn-add-player" class="px-3 py-1 bg-blue-600 text-white rounded shadow text-sm touch-target">+ 새 선수 추가</button>
+            </div>
+            <div id="manage-list" class="flex flex-col gap-2 pb-10">
+                <!-- JS 렌더링 영역 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 하단 고정 액션 바 (출석 체크 탭에서만 보임) -->
+    <div id="action-bar" class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] p-4 flex justify-center z-50">
+        <button id="btn-generate-team" class="w-full max-w-md bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg text-lg touch-target">팀 편성하기</button>
+    </div>
+
+    <script>
+        // --- 1. 기본 설정 및 데이터 ---
+
+        // 가상 선수 30명 데이터 생성 (C: 5명, F: 10명, G: 15명)
+        const MOCK_PLAYERS = [
+            // Center (5)
+            { id: 1, name: '강백호', pos: 'C', level: 3 },
+            { id: 2, name: '채치수', pos: 'C', level: 3 },
+            { id: 3, name: '성현준', pos: 'C', level: 2 },
+            { id: 4, name: '변덕규', pos: 'C', level: 2 },
+            { id: 5, name: '고민구', pos: 'C', level: 1 },
+            // Forward (10)
+            { id: 6, name: '서태웅', pos: 'F', level: 3 },
+            { id: 7, name: '윤대협', pos: 'F', level: 3 },
+            { id: 8, name: '정대만', pos: 'F', level: 3 },
+            { id: 9, name: '권준호', pos: 'F', level: 2 },
+            { id: 10, name: '황태산', pos: 'F', level: 2 },
+            { id: 11, name: '신준섭', pos: 'F', level: 2 },
+            { id: 12, name: '남수일', pos: 'F', level: 1 },
+            { id: 13, name: '이정환', pos: 'F', level: 1 }, /* 포워드로 임시 배정 */
+            { id: 14, name: '김동식', pos: 'F', level: 1 },
+            { id: 15, name: '박태민', pos: 'F', level: 1 },
+            // Guard (15)
+            { id: 16, name: '송태섭', pos: 'G', level: 3 },
+            { id: 17, name: '이명헌', pos: 'G', level: 3 },
+            { id: 18, name: '김수겸', pos: 'G', level: 3 },
+            { id: 19, name: '홍익현', pos: 'G', level: 2 },
+            { id: 20, name: '나대룡', pos: 'G', level: 2 },
+            { id: 21, name: '백정태', pos: 'G', level: 2 },
+            { id: 22, name: '신소일', pos: 'G', level: 2 },
+            { id: 23, name: '허태환', pos: 'G', level: 2 },
+            { id: 24, name: '최동오', pos: 'G', level: 1 },
+            { id: 25, name: '정성구', pos: 'G', level: 1 },
+            { id: 26, name: '안영수', pos: 'G', level: 1 },
+            { id: 27, name: '김대용', pos: 'G', level: 1 },
+            { id: 28, name: '이재훈', pos: 'G', level: 1 },
+            { id: 29, name: '이경민', pos: 'G', level: 1 },
+            { id: 30, name: '오창석', pos: 'G', level: 1 },
+        ];
+
+        // --- 2. 상태 관리 (localStorage) ---
+        
+        let players = JSON.parse(localStorage.getItem('btm_players')) || MOCK_PLAYERS;
+        let attendance = JSON.parse(localStorage.getItem('btm_attendance')) || {}; // { id: boolean }
+        let clubName = localStorage.getItem('btm_clubName') || '';
+
+        function saveState() {
+            localStorage.setItem('btm_players', JSON.stringify(players));
+            localStorage.setItem('btm_attendance', JSON.stringify(attendance));
+            localStorage.setItem('btm_clubName', clubName);
+        }
+
+        // --- 3. UI 초기화 ---
+
+        // 날짜 세팅
+        const today = new Date();
+        document.getElementById('today-date').innerText = `${today.getFullYear()}.${today.getMonth() + 1}.${today.getDate()}`;
+
+        // 클럽 이름 세팅
+        const clubInput = document.getElementById('club-name');
+        clubInput.value = clubName;
+        clubInput.addEventListener('input', (e) => {
+            clubName = e.target.value;
+            saveState();
+        });
+
+        // 탭 전환 로직
+        const tabs = ['attendance', 'result', 'manage'];
+        tabs.forEach(tab => {
+            document.getElementById(`tab-${tab}`).addEventListener('click', () => {
+                tabs.forEach(t => {
+                    document.getElementById(`section-${t}`).classList.add('hidden');
+                    document.getElementById(`tab-${t}`).classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                    document.getElementById(`tab-${t}`).classList.add('text-gray-500');
+                });
+                document.getElementById(`section-${tab}`).classList.remove('hidden');
+                document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
+                document.getElementById(`tab-${tab}`).classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+                
+                // 액션바 표시 여부
+                if(tab === 'attendance') {
+                    document.getElementById('action-bar').classList.remove('hidden');
+                } else {
+                    document.getElementById('action-bar').classList.add('hidden');
+                }
+            });
+        });
+
+        // --- 4. 출석 체크 리스트 렌더링 ---
+
+        function getLevelStars(level) {
+            return level === 3 ? '⭐⭐⭐' : level === 2 ? '⭐⭐' : '⭐';
+        }
+
+        function renderPlayerList() {
+            const listEl = document.getElementById('player-list');
+            listEl.innerHTML = '';
+            let attendCount = 0;
+
+            // 포지션, 이름 순으로 정렬
+            const sortedPlayers = [...players].sort((a, b) => {
+                const posOrder = { 'C': 1, 'F': 2, 'G': 3 };
+                if (posOrder[a.pos] !== posOrder[b.pos]) return posOrder[a.pos] - posOrder[b.pos];
+                return a.name.localeCompare(b.name);
+            });
+
+            sortedPlayers.forEach(p => {
+                const isChecked = attendance[p.id] || false;
+                if(isChecked) attendCount++;
+
+                const card = document.createElement('div');
+                card.className = `flex items-center justify-between p-3 rounded-lg border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'} cursor-pointer touch-target`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="badge-${p.pos} text-xs font-bold px-2 py-1 rounded-full">${p.pos}</span>
+                        <div>
+                            <div class="font-bold text-gray-800">${p.name}</div>
+                            <div class="text-xs text-gray-500">레벨: ${getLevelStars(p.level)}</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" class="custom-checkbox pointer-events-none" ${isChecked ? 'checked' : ''}>
+                `;
+
+                card.addEventListener('click', () => {
+                    attendance[p.id] = !attendance[p.id];
+                    saveState();
+                    renderPlayerList();
+                });
+
+                listEl.appendChild(card);
+            });
+
+            document.getElementById('attend-count').innerText = attendCount;
+        }
+
+        document.getElementById('btn-select-all').addEventListener('click', () => {
+            const allChecked = players.every(p => attendance[p.id]);
+            players.forEach(p => attendance[p.id] = !allChecked);
+            saveState();
+            renderPlayerList();
+        });
+
+        // --- 5. 팀 편성 알고리즘 ---
+        function assignTeams(attendeeIds) {
+            const attendees = players.filter(p => attendeeIds.includes(p.id));
+            
+            // 포지션별 분류 및 레벨 내림차순 정렬 (동점일 경우 랜덤 셔플)
+            const shuffleLevel = (pool) => {
+                return pool.map(p => ({ p, rand: Math.random() }))
+                           .sort((a,b) => (b.p.level - a.p.level) || (a.rand - b.rand))
+                           .map(x => x.p);
+            };
+
+            let poolC = shuffleLevel(attendees.filter(p => p.pos === 'C'));
+            let poolF = shuffleLevel(attendees.filter(p => p.pos === 'F'));
+            let poolG = shuffleLevel(attendees.filter(p => p.pos === 'G'));
+
+            if (poolC.length < 3) {
+                console.warn(`[알림] 센터가 ${poolC.length}명뿐입니다! 포워드/가드가 센터 역할을 대체해야 할 수 있습니다.`);
+            }
+
+            const teams = [
+                { id: 'A', name: 'A팀', players: [], score: 0 },
+                { id: 'B', name: 'B팀', players: [], score: 0 },
+                { id: 'C', name: 'C팀', players: [], score: 0 }
+            ];
+
+            // 풀에서 팀으로 분배하는 함수
+            function assignPool(pool, positionKey) {
+                pool.forEach(player => {
+                    // 1순위: 해당 포지션 인원수 적은 팀
+                    // 2순위: 전체 인원수 적은 팀
+                    // 3순위: 전체 팀 점수 낮은 팀
+                    teams.sort((t1, t2) => {
+                        const count1 = t1.players.filter(p => p.pos === positionKey).length;
+                        const count2 = t2.players.filter(p => p.pos === positionKey).length;
+                        if (count1 !== count2) return count1 - count2;
+                        
+                        if (t1.players.length !== t2.players.length) return t1.players.length - t2.players.length;
+                        
+                        return t1.score - t2.score;
+                    });
+                    
+                    teams[0].players.push(player);
+                    teams[0].score += player.level;
+                });
+            }
+
+            // 분배 순서: C -> F -> G
+            assignPool(poolC, 'C');
+            assignPool(poolF, 'F');
+            assignPool(poolG, 'G');
+
+            // 점수 최적화 (점수 차이 3점 이하 맞추기 위해 같은 포지션끼리 스왑 시도)
+            function getMaxDiff(ts) {
+                const scores = ts.map(t => t.score);
+                return Math.max(...scores) - Math.min(...scores);
+            }
+
+            let maxDiff = getMaxDiff(teams);
+            let iterations = 0;
+            
+            while (maxDiff > 3 && iterations < 50) {
+                teams.sort((a,b) => b.score - a.score); // 0: 최고점 팀, 2: 최저점 팀
+                let maxTeam = teams[0];
+                let minTeam = teams[2];
+                let swapped = false;
+
+                for (let i = 0; i < maxTeam.players.length; i++) {
+                    for (let j = 0; j < minTeam.players.length; j++) {
+                        let p1 = maxTeam.players[i];
+                        let p2 = minTeam.players[j];
+                        
+                        // 같은 포지션이고 레벨 차이가 있을 때 스왑 시도
+                        if (p1.pos === p2.pos && p1.level > p2.level) {
+                            let diff = p1.level - p2.level;
+                            let newMaxScore = maxTeam.score - diff;
+                            let newMinScore = minTeam.score + diff;
+                            let currentDiff = maxTeam.score - minTeam.score;
+                            let newDiff = Math.abs(newMaxScore - newMinScore);
+                            
+                            if (newDiff < currentDiff) {
+                                maxTeam.players[i] = p2;
+                                minTeam.players[j] = p1;
+                                maxTeam.score = newMaxScore;
+                                minTeam.score = newMinScore;
+                                swapped = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (swapped) break;
+                }
+                if (!swapped) break; // 더 이상 교환으로 점수차를 줄일 수 없음
+                maxDiff = getMaxDiff(teams);
+                iterations++;
+            }
+
+            // --- 점수 변동성(Variance) 추가 ---
+            // 점수 차이가 3점 이하를 유지하는 선에서, 무작위로 선수 교환을 시도하여 총점을 인위적으로 흔듦
+            for(let k=0; k<20; k++) {
+                let tA = teams[Math.floor(Math.random()*3)];
+                let tB = teams[Math.floor(Math.random()*3)];
+                if(tA === tB) continue;
+
+                let pA = tA.players[Math.floor(Math.random()*tA.players.length)];
+                let pB = tB.players[Math.floor(Math.random()*tB.players.length)];
+
+                if (pA.pos === pB.pos && pA.level !== pB.level) {
+                    let diff = pA.level - pB.level;
+                    let newScoreA = tA.score - diff;
+                    let newScoreB = tB.score + diff;
+                    
+                    let scores = teams.map(t => t.id === tA.id ? newScoreA : (t.id === tB.id ? newScoreB : t.score));
+                    let newMaxDiff = Math.max(...scores) - Math.min(...scores);
+
+                    // 3점 차이 이내라면 스왑 승인 (점수가 다양해짐)
+                    if (newMaxDiff <= 3 && newMaxDiff > 0) {
+                        tA.players[tA.players.indexOf(pA)] = pB;
+                        tB.players[tB.players.indexOf(pB)] = pA;
+                        tA.score = newScoreA;
+                        tB.score = newScoreB;
+                    }
+                }
+            }
+
+            // 결과를 팀명(A,B,C) 오름차순으로 원복하여 반환
+            return teams.sort((a,b) => a.id.localeCompare(b.id));
+        }
+
+        // 테스트 함수 (콘솔 확인용)
+        function testAssignTeams() {
+            console.log("========== 팀 편성 알고리즘 테스트 시작 ==========");
+            
+            // Case A: 18명 (C3, F6, G9)
+            const caseA_Ids = [
+                1, 2, 3, // C (3)
+                6, 7, 8, 9, 10, 11, // F (6)
+                16, 17, 18, 19, 20, 21, 22, 23, 24 // G (9)
+            ];
+            const resultA = assignTeams(caseA_Ids);
+            console.log("[Case A] 출석 18명(센터3·포워드6·가드9) 정상 편성:");
+            console.log(resultA.map(t => `${t.name} (${t.players.length}명) - 점수: ${t.score} / C:${t.players.filter(p=>p.pos==='C').length}, F:${t.players.filter(p=>p.pos==='F').length}, G:${t.players.filter(p=>p.pos==='G').length}`));
+
+            // Case B: 16명 (각 팀 5~6명)
+            const caseB_Ids = caseA_Ids.slice(0, 16); 
+            const resultB = assignTeams(caseB_Ids);
+            console.log("[Case B] 출석 16명 편성 결과 (5명, 5명, 6명):");
+            console.log(resultB.map(t => `${t.name} (${t.players.length}명) - 점수: ${t.score}`));
+
+            // Case C: 센터가 2명만 출석
+            const caseC_Ids = [
+                1, 2, // C (2) - 센터 부족!
+                6, 7, 8, 9, 10, 11, // F (6)
+                16, 17, 18, 19, 20, 21, 22, 23, 24, 25 // G (10)
+            ];
+            console.log("[Case C] 출석 18명(센터 2명만 출석) - 경고 발생 여부 확인:");
+            const resultC = assignTeams(caseC_Ids);
+            console.log(resultC.map(t => `${t.name} (${t.players.length}명) - 점수: ${t.score} / C:${t.players.filter(p=>p.pos==='C').length}`));
+
+            console.log("========== 팀 편성 알고리즘 테스트 종료 ==========");
+        }
+
+        // --- 6. UI 렌더링 (팀 편성 결과) ---
+        let currentTeams = [];
+
+        function renderTeams() {
+            const container = document.getElementById('result-container');
+            const placeholder = document.getElementById('result-placeholder');
+            container.innerHTML = '';
+
+            if (currentTeams.length === 0) {
+                container.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            const teamStyles = {
+                'A': 'bg-team-a border-red-600',
+                'B': 'bg-team-b border-blue-600',
+                'C': 'bg-team-c border-yellow-500'
+            };
+
+            currentTeams.forEach(team => {
+                const teamId = team.id.replace('팀', ''); // 'A', 'B', 'C'
+                const styleClass = teamStyles[teamId] || 'bg-gray-200 text-gray-800';
+
+                const card = document.createElement('div');
+                card.className = `border-2 rounded-lg overflow-hidden flex flex-col ${styleClass}`;
+                
+                // 팀 헤더
+                card.innerHTML = `
+                    <div class="p-3 font-bold text-center text-lg shadow-sm">
+                        ${team.name} <span class="text-sm font-normal opacity-90">(${team.players.length}명 / 총 ${team.score}점)</span>
+                    </div>
+                    <div class="p-2 flex-1 bg-white text-gray-800">
+                        ${team.players.map(p => `
+                            <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-${p.pos} text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full">${p.pos}</span>
+                                    <span class="font-medium">${p.name}</span>
+                                </div>
+                                <span class="text-xs text-gray-500">${getLevelStars(p.level)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 편성 버튼 클릭 이벤트
+        document.getElementById('btn-generate-team').addEventListener('click', () => {
+            const attendeeIds = players.filter(p => attendance[p.id]).map(p => p.id);
+            if (attendeeIds.length === 0) {
+                alert('출석한 선수가 없습니다.');
+                return;
+            }
+            if (attendeeIds.length < 3) {
+                alert('최소 3명 이상 출석해야 팀을 편성할 수 있습니다.');
+                return;
+            }
+
+            // 팀 할당
+            currentTeams = assignTeams(attendeeIds);
+            
+            // 부족한 센터 체크
+            const centersCount = players.filter(p => attendance[p.id] && p.pos === 'C').length;
+            if (centersCount < 3) {
+                alert(`[알림] 출석한 센터가 ${centersCount}명뿐입니다. 다른 포지션이 센터를 대체하여 배정되었습니다.`);
+            }
+
+            // 결과 렌더링 및 탭 전환
+            renderTeams();
+            document.getElementById('tab-result').click(); // 결과 탭으로 자동 이동
+        });
+
+        document.getElementById('btn-re-roll').addEventListener('click', () => {
+            document.getElementById('btn-generate-team').click();
+        });
+
+        // --- 7. 이미지 저장 및 텍스트 복사 ---
+        document.getElementById('btn-save-img').addEventListener('click', async () => {
+            const printArea = document.getElementById('print-area');
+            const clubNameVal = clubInput.value || '농구동호회';
+            const dateText = document.getElementById('today-date').innerText;
+            
+            try {
+                // html2canvas 옵션: 화질 향상을 위해 scale 증가, UI 깨짐 방지
+                const canvas = await html2canvas(printArea, { 
+                    backgroundColor: '#ffffff', 
+                    scale: 2,
+                    useCORS: true 
+                });
+                const link = document.createElement('a');
+                link.download = `${clubNameVal}_팀편성결과_${dateText}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                console.error(err);
+                alert('이미지 저장에 실패했습니다.');
+            }
+        });
+
+        document.getElementById('btn-copy-text').addEventListener('click', () => {
+            if (currentTeams.length === 0) {
+                alert('편성된 팀이 없습니다.');
+                return;
+            }
+            
+            const clubNameVal = clubInput.value || '농구동호회';
+            const dateText = document.getElementById('today-date').innerText;
+            
+            let text = `[${clubNameVal}] ${dateText} 팀 편성 결과\n\n`;
+            currentTeams.forEach(t => {
+                text += `■ ${t.name} (총 ${t.score}점)\n`;
+                text += t.players.map(p => `- ${p.pos} ${p.name} ${getLevelStars(p.level)}`).join('\n');
+                text += '\n\n';
+            });
+
+            navigator.clipboard.writeText(text.trim()).then(() => {
+                alert('텍스트가 클립보드에 복사되었습니다.');
+            }).catch(err => {
+                console.error(err);
+                alert('복사에 실패했습니다. 브라우저 설정을 확인해주세요.');
+            });
+        });
+
+        // --- 8. 선수 관리 기능 ---
+        function renderManageList() {
+            const listEl = document.getElementById('manage-list');
+            listEl.innerHTML = '';
+
+            players.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'flex gap-2 items-center bg-white p-2 border rounded shadow-sm';
+                
+                row.innerHTML = `
+                    <select class="border p-2 rounded text-sm w-16" onchange="updatePlayer(${p.id}, 'pos', this.value)">
+                        <option value="C" ${p.pos === 'C' ? 'selected' : ''}>C</option>
+                        <option value="F" ${p.pos === 'F' ? 'selected' : ''}>F</option>
+                        <option value="G" ${p.pos === 'G' ? 'selected' : ''}>G</option>
+                    </select>
+                    <input type="text" class="border p-2 rounded text-sm flex-1" value="${p.name}" onchange="updatePlayer(${p.id}, 'name', this.value)">
+                    <select class="border p-2 rounded text-sm w-20" onchange="updatePlayer(${p.id}, 'level', Number(this.value))">
+                        <option value="3" ${p.level === 3 ? 'selected' : ''}>상</option>
+                        <option value="2" ${p.level === 2 ? 'selected' : ''}>중</option>
+                        <option value="1" ${p.level === 1 ? 'selected' : ''}>하</option>
+                    </select>
+                    <button class="bg-red-500 text-white px-3 py-2 rounded text-sm font-bold touch-target whitespace-nowrap" onclick="deletePlayer(${p.id})">삭제</button>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+
+        window.updatePlayer = function(id, key, value) {
+            const p = players.find(p => p.id === id);
+            if (p) {
+                p[key] = value;
+                saveState();
+                renderPlayerList();
+            }
+        };
+
+        window.deletePlayer = function(id) {
+            if (confirm('정말로 삭제하시겠습니까?')) {
+                players = players.filter(p => p.id !== id);
+                delete attendance[id];
+                saveState();
+                renderPlayerList();
+                renderManageList();
+            }
+        };
+
+        document.getElementById('btn-add-player').addEventListener('click', () => {
+            const newId = players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1;
+            players.push({ id: newId, name: '새 선수', pos: 'F', level: 1 });
+            saveState();
+            renderPlayerList();
+            renderManageList();
+            
+            // 리스트 맨 아래로 스크롤
+            setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            }, 100);
+        });
+
+        // 탭 전환 시 선수 관리 목록 갱신 연동
+        document.getElementById('tab-manage').addEventListener('click', () => {
+            renderManageList();
+        });
+
+        // 초기 렌더링
+        renderPlayerList();
+        renderManageList();
+        saveState();
+
+    </script>
+</body>
+</html>
