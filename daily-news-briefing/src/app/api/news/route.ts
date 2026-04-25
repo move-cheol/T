@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     const { config } = body;
 
     if (!config || !config.clientBrand) {
-      return NextResponse.json({ error: '기준 브랜드가 설정되지 않았습니다.' }, { status: 400 });
+      return NextResponse.json({ error: '기준 브랜드가 설정되지 않았습니다.' });
     }
 
     const competitors = config.competitors
@@ -125,22 +125,31 @@ export async function POST(request: Request) {
 
     const promises: Promise<any[]>[] = [];
 
-    // 1. 자사 수집 (뉴스 10, 유튜브 5, 인스타 5)
+    // 1. 자사 수집 (뉴스 10, 유튜브 5, 인스타 3)
     promises.push(fetchGoogleNews(config.clientBrand, 10));
     promises.push(fetchYouTube(config.clientBrand, 5));
-    promises.push(fetchInstagram(config.clientBrand, 5));
+    promises.push(fetchInstagram(config.clientBrand, 3));
 
-    // 2. 경쟁사 수집 (뉴스 5, 유튜브 3, 인스타 3)
-    competitors.forEach((comp: string) => {
+    // 2. 경쟁사 수집 (최대 5개 경쟁사만 처리하여 시간 초과 방지)
+    const limitedCompetitors = competitors.slice(0, 5);
+    limitedCompetitors.forEach((comp: string) => {
       promises.push(fetchGoogleNews(comp, 5));
       promises.push(fetchYouTube(comp, 3));
-      promises.push(fetchInstagram(comp, 3));
+      promises.push(fetchInstagram(comp, 2));
     });
 
-    const resultsArray = await Promise.all(promises);
-    const allItems = resultsArray.flat();
+    // 8.5초 타임아웃 방어 로직 (Vercel Hobby Limit 10초)
+    const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve("TIMEOUT"), 8500));
+    
+    const fetchAllPromise = Promise.all(promises).then(results => results.flat());
 
-    if (allItems.length === 0) {
+    const allItems = await Promise.race([fetchAllPromise, timeoutPromise]);
+
+    if (allItems === "TIMEOUT") {
+      return NextResponse.json({ error: '수집 시간이 초과되었습니다. 경쟁사 개수를 줄이거나 잠시 후 다시 시도해주세요.' });
+    }
+
+    if (!Array.isArray(allItems) || allItems.length === 0) {
       return NextResponse.json({ ownNews: [], competitorNews: [] });
     }
 
@@ -174,6 +183,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('API Route Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' });
   }
 }
